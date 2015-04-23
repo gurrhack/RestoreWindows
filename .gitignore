@@ -23,6 +23,17 @@
 *.lib
 
 # Executables
-*.exe
 *.out
 *.app
+
+*.sdf
+*.opensdf
+*.suo
+*.pdb
+*.log
+*.aps
+*.filters
+*.user
+
+Debug
+Release
