@@ -8,7 +8,7 @@ This utility continually tracks the position and size of desktop windows and res
 correct placement when all monitors are reconnected to the system.
 
 Usage:
-  RestoreWindow [OPTIONS]
+  RestoreWindows [OPTIONS]
   
   --delay t       The time in milliseconds between display reconnect and window restoration. Defaults to 1000
   --debuglog      Writes a debug log to RestoreWindow.log
