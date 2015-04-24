@@ -32,8 +32,7 @@
 *.pdb
 *.log
 *.aps
-*.filters
-*.user
+
 
 Debug
 Release
