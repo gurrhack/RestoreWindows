@@ -82,6 +82,64 @@ char* PlacementText(const WINDOWPLACEMENT& placement)
 
 // _____________________________________________________________________ //
 //
+// Monitor placement
+// _____________________________________________________________________ //
+BOOL CALLBACK EnumMonitorProc(HMONITOR hMonitor, HDC hdc, LPRECT rect, LPARAM lParam)
+{
+	std::vector<RECT>* monitors = (std::vector<RECT>*)lParam;
+	monitors->push_back(*rect);
+	return TRUE;
+}
+
+std::vector<RECT> GetAllMonitors()
+{
+	std::vector<RECT> monitors;
+	EnumDisplayMonitors(NULL, NULL, EnumMonitorProc, (LPARAM)&monitors);
+	return monitors;
+}
+
+bool IsDesiredMonitorLayout()
+{
+	std::vector<RECT> monitors = GetAllMonitors();
+	if(monitors.size() != DesiredMonitorPlacements.size())
+		return false;
+	// This assumes deterministic order which might not work on every system
+	for(size_t i = 0; i < monitors.size(); i++)
+	{
+		const RECT& m0 = monitors[i];
+		const RECT& m1 = DesiredMonitorPlacements[i];
+
+		// Only care about the size
+		if(m0.right - m0.left != m1.right - m1.left)
+			return false;
+		if(m0.top - m0.bottom != m1.top - m1.bottom)
+			return false;
+	}
+	return true;
+}
+
+bool IsIdenticalMonitorLayout()
+{
+	std::vector<RECT> monitors = GetAllMonitors();
+	if(monitors.size() != DesiredMonitorPlacements.size())
+		return false;
+	// This assumes deterministic order which might not work on every system
+	for(size_t i = 0; i < monitors.size(); i++)
+	{
+		const RECT& m0 = monitors[i];
+		const RECT& m1 = DesiredMonitorPlacements[i];
+
+		if(memcmp(&m0, &m1, sizeof(m0)))
+			return false;
+	}
+	return true;
+}
+
+
+
+
+// _____________________________________________________________________ //
+//
 // Window placement
 // _____________________________________________________________________ //
 bool IsApplicationWindow(HWND hWnd)
@@ -299,6 +357,10 @@ void CALLBACK ResumeWindowTracking(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD
 	if(!IsPaused)
 		return;
 
+	// The layout could've changed since the call to ScheduleResumeWindowTracking()
+	if(!IsDesiredMonitorLayout())
+		return;
+
 	Log(" =========== RESUME WINDOW TRACKING ===========\n");
 	IsPaused = false;
 
@@ -315,57 +377,32 @@ void ScheduleResumeWindowTracking()
 
 // _____________________________________________________________________ //
 //
-// Monitor placement
-// _____________________________________________________________________ //
-BOOL CALLBACK EnumMonitorProc(HMONITOR hMonitor, HDC hdc, LPRECT rect, LPARAM lParam)
-{
-	std::vector<RECT>* monitors = (std::vector<RECT>*)lParam;
-	monitors->push_back(*rect);
-	return TRUE;
-}
-
-std::vector<RECT> GetAllMonitors()
-{
-	std::vector<RECT> monitors;
-	EnumDisplayMonitors(NULL, NULL, EnumMonitorProc, (LPARAM)&monitors);
-	return monitors;
-}
-
-bool IsDesiredMonitorLayout()
-{
-	std::vector<RECT> monitors = GetAllMonitors();
-	if(monitors.size() != DesiredMonitorPlacements.size())
-		return false;
-	// This assumes deterministic order which might not work on every system
-	for(size_t i = 0; i < monitors.size(); i++)
-	{
-		const RECT& m0 = monitors[i];
-		const RECT& m1 = DesiredMonitorPlacements[i];
-
-		// Only care about the size
-		if(m0.right - m0.left != m1.right - m1.left)
-			return false;
-		if(m0.top - m0.bottom != m1.top - m1.bottom)
-			return false;
-	}
-	return true;
-}
-
-
-
-
-// _____________________________________________________________________ //
-//
 // Dummy window for message handling
 // _____________________________________________________________________ //
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	if(msg == WM_DISPLAYCHANGE)
 	{
-		if(IsDesiredMonitorLayout())
-			ScheduleResumeWindowTracking();
-		else
+		if(!IsPaused && IsIdenticalMonitorLayout())
+		{
+			// On some systems it's possible to disconnect and reconnect a monitor without 
+			// triggering a monitor layout change, but WM_DISPLAYCHANGE is still sent.
+			// Do a pause and immediate resume to catch that case
+			Log("Forced restore\n");
 			PauseWindowTracking();
+			ScheduleResumeWindowTracking();
+		}
+		else if(IsDesiredMonitorLayout())
+		{
+			// Extract monitor placements again in case the positions were changed
+			DesiredMonitorPlacements = GetAllMonitors();
+
+			ScheduleResumeWindowTracking();
+		}
+		else
+		{
+			PauseWindowTracking();
+		}
 	}
 
 	return DefWindowProc(hWnd, msg, wParam, lParam);
