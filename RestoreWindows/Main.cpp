@@ -96,8 +96,32 @@ BOOL GetProperWindowPlacement(HWND hWnd, WINDOWPLACEMENT *placement)
 	{
 		if(placement->showCmd == SW_SHOWNORMAL)
 		{
-			// If the window is "docked" the normalposition is invalid
+			// If the window is "docked" the normalposition contains the last non-docked position.
+			// That is not where we want to restore it, so extract the current rect with GetWindowRect
+			// and translate the position to client coordinates
 			GetWindowRect(hWnd, &placement->rcNormalPosition);
+
+			// From MSDN WINDOWPLACEMENT reference:
+			// "If the window is a top-level window that does not have the WS_EX_TOOLWINDOW window style,
+			// then the coordinates represented by the following members are in workspace coordinates"
+			// "Otherwise, these members are in screen coordinates"
+
+			DWORD exStyle = GetWindowLong(hWnd, GWL_EXSTYLE);
+			if(!(exStyle & WS_EX_TOOLWINDOW))
+			{
+				MONITORINFO monitorInfo;
+				monitorInfo.cbSize = sizeof(MONITORINFO);
+
+				HMONITOR hMonitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+				GetMonitorInfo(hMonitor, &monitorInfo);
+				// 
+				int dx = monitorInfo.rcMonitor.left - monitorInfo.rcWork.left;
+				int dy = monitorInfo.rcMonitor.top - monitorInfo.rcWork.top;
+				placement->rcNormalPosition.left += dx;
+				placement->rcNormalPosition.top += dy;
+				placement->rcNormalPosition.right += dx;
+				placement->rcNormalPosition.bottom += dy;
+			}
 		}
 		return TRUE;
 	}
