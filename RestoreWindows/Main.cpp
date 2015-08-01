@@ -247,20 +247,10 @@ void RestoreWindowPlacements()
 
 		if(current.showCmd == SW_SHOWMINIMIZED)
 		{
-			// The window was minimized
-
-			// The window's "normal position" will be invalid if it originated from a monitor that was reconnected
-			//placement.showCmd = SW_SHOWMINNOACTIVE;
-			//placement.flags |= WPF_ASYNCWINDOWPLACEMENT;
-			//SetWindowPlacement(it->first, &placement);
-
-
-			// Restore
-			ShowWindowAsync(it->first, SW_SHOWNOACTIVATE);
-			// Move
-			SetWindowPos(it->first, 0, placement.rcNormalPosition.left, placement.rcNormalPosition.top, 0, 0, SWP_ASYNCWINDOWPOS|SWP_NOACTIVATE| SWP_NOOWNERZORDER | SWP_NOSIZE);
-			// Maximize
-			ShowWindowAsync(it->first, SW_SHOWMINNOACTIVE);
+			// Restore its minimized position
+			placement.showCmd = SW_SHOWMINNOACTIVE;
+			placement.flags |= WPF_ASYNCWINDOWPLACEMENT;
+			SetWindowPlacement(it->first, &placement);
 		}
 		else if(current.showCmd == SW_SHOWMAXIMIZED)
 		{
@@ -274,7 +264,9 @@ void RestoreWindowPlacements()
 			// Restore
 			ShowWindowAsync(it->first, SW_SHOWNOACTIVATE);
 			// Move
-			SetWindowPos(it->first, 0, placement.rcNormalPosition.left, placement.rcNormalPosition.top, 0, 0, SWP_ASYNCWINDOWPOS | SWP_NOACTIVATE| SWP_NOOWNERZORDER | SWP_NOSIZE);
+			placement.showCmd = SW_SHOWNOACTIVATE;
+			placement.flags |= WPF_ASYNCWINDOWPLACEMENT;
+			SetWindowPlacement(it->first, &placement);
 			// Maximize
 			ShowWindowAsync(it->first, SW_SHOWMAXIMIZED);
 		}
