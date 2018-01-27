@@ -54,7 +54,7 @@ void Log(const char* fmt, ...)
 	int len = _vscprintf(fmt, args);
 	if(len >= (int)buf.size())
 		buf.resize(len + 1);
-	len = _vsnprintf_s(buf.data(), buf.size(), buf.size(), fmt, args);
+	len = _vsnprintf_s(buf.data(), buf.size(), len, fmt, args);
 	va_end(args);
 	if(len > 0)
 	{
